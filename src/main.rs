@@ -4,14 +4,16 @@ use std::fs;
 #[derive(Debug)]
 struct Safe {
     dial: i32,
-    zero_count: u32,
+    zero_stops: u32,
+    zero_passes: u32,
 }
 
 impl Safe {
     fn new() -> Safe {
         Safe {
             dial: 50,
-            zero_count: 0,
+            zero_stops: 0,
+            zero_passes: 0,
         }
     }
     fn parse_cmd_str(cmd: &str) -> i32 {
@@ -26,16 +28,28 @@ impl Safe {
         }
     }
     fn run_cmd(&self, cmd: &str) -> Safe {
-        let value = (self.dial + Safe::parse_cmd_str(cmd)) % 100;
+        let turn = Safe::parse_cmd_str(cmd);
+        let value = self.dial + turn;
+        let new_dial = ((value % 100) + 100) % 100;
         Safe {
-            dial: match value >= 0 {
-                true => value,
-                false => 100 + value,
+            dial: new_dial,
+            zero_stops: match new_dial {
+                0 => self.zero_stops + 1,
+                _ => self.zero_stops,
             },
-            zero_count: match value {
-                0 => self.zero_count + 1,
-                _ => self.zero_count,
-            },
+            zero_passes: (if value.abs() > 100 {
+                self.zero_passes
+                    + (value.abs() as u32 / 100)
+                    + (if (value < 0 && self.dial != 0) { 1 } else { 0 })
+            } else if new_dial == 0 {
+                self.zero_passes + 1
+            } else if value >= 100 {
+                self.zero_passes + 1
+            } else if value <= 0 && self.dial != 0 {
+                self.zero_passes + 1
+            } else {
+                self.zero_passes
+            }),
         }
     }
 }
