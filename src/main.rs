@@ -37,19 +37,12 @@ impl Safe {
                 0 => self.zero_stops + 1,
                 _ => self.zero_stops,
             },
-            zero_passes: (if value.abs() > 100 {
-                self.zero_passes
-                    + (value.abs() as u32 / 100)
-                    + (if (value < 0 && self.dial != 0) { 1 } else { 0 })
-            } else if new_dial == 0 {
-                self.zero_passes + 1
-            } else if value >= 100 {
-                self.zero_passes + 1
-            } else if value <= 0 && self.dial != 0 {
-                self.zero_passes + 1
-            } else {
-                self.zero_passes
-            }),
+            zero_passes: match (value, self.dial) {
+                (..0, 0) => self.zero_passes + (value / -100).abs() as u32,
+                (..0, _) => self.zero_passes + 1 + (value / -100).abs() as u32,
+                (0, _) => self.zero_passes + 1,
+                (_, _) => self.zero_passes + (value / 100).abs() as u32,
+            },
         }
     }
 }
@@ -59,4 +52,37 @@ fn main() {
     let day1 = day1_str.trim().split("\n");
     let safe = day1.fold(Safe::new(), |acc, cmd| acc.run_cmd(cmd));
     println!("Resulting state is {safe:?}");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn print_return<T: std::fmt::Debug>(x: T) -> T {
+        println!("{x:?}");
+        x
+    }
+
+    #[test]
+    fn day1_test_input() {
+        let day1_str = fs::read_to_string("./src/data/day1_test1.txt").unwrap();
+        let day1 = day1_str.trim().split("\n");
+        let safe = day1.fold(Safe::new(), |acc, cmd| print_return(acc.run_cmd(cmd)));
+        assert_eq!(safe.zero_stops, 3);
+        assert_eq!(safe.zero_passes, 6);
+    }
+    #[test]
+    fn day1_big_rotation() {
+        let safe = Safe::new().run_cmd("R1000");
+        assert_eq!(safe.zero_passes, 10);
+        assert_eq!(Safe::new().run_cmd("L1000").zero_passes, 10);
+        assert_eq!(Safe::new().run_cmd("R50").zero_passes, 1);
+        assert_eq!(print_return(Safe::new().run_cmd("R150")).zero_passes, 2);
+    }
+
+    #[test]
+    fn i_understand_division() {
+        assert_eq!(6/10, 0);
+        assert_eq!(12/10, 1);
+    }
 }
